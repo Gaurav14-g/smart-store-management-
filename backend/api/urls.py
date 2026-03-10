@@ -49,7 +49,6 @@ urlpatterns = [
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
     path('changeMyPassword/', ChangeMyPasswordView.as_view(), name='changeMyPassword'),
     path('passwordReset/', PasswordResetRequestView.as_view(), name='passwordResetRequest'),
-    # path('pass-reset/<str:temp_token>/', PasswordResetConfirmView.as_view(), name='pass-reset'),  # put it in security(auth) app's urls
     path('isSuperUser/', CheckUserType.as_view(), name='isSuperUser'),
     path('createUser/', createUserViews.CreateUserAPI.as_view(), name='create-user'),
     path('statistics/', StatisticsView.statistics, name='statistics'),

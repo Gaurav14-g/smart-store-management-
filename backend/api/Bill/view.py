@@ -7,6 +7,7 @@ from django.db.models import Sum, Count
 from datetime import datetime
 from .model import Bill
 from .serializer import BillSerializer, BillListSerializer
+from api.utils.notifications import send_bill_email, send_whatsapp_message
 
 class BillViewset(viewsets.ModelViewSet):
     queryset = Bill.objects.all().select_related('user', 'customer').prefetch_related('items__product')
@@ -24,7 +25,24 @@ class BillViewset(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
+        bill = serializer.save()
+        
+        # Send notifications
+        if bill.customer:
+            items_text = "\n".join([f"- {item.product.product_name} x{item.quantity} = ${item.price * item.quantity}" for item in bill.items.all()])
+            bill_data = {
+                'id': str(bill.id),
+                'bill_date': bill.bill_date.strftime('%Y-%m-%d %H:%M'),
+                'total_amount': str(bill.total_amount),
+                'items_text': items_text
+            }
+            
+            if bill.customer.email:
+                send_bill_email(bill.customer.email, bill_data)
+            
+            if bill.customer.phone:
+                send_whatsapp_message(bill.customer.phone, bill_data)
+        
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
     
