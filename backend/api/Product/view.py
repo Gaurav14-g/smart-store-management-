@@ -23,3 +23,23 @@ class ProductViewset(viewsets.ModelViewSet):
             return Response(serializer.data)
         except Product.DoesNotExist:
             return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    @action(detail=False, methods=['post'])
+    def check_stock(self, request):
+        items = request.data.get('items', [])
+        errors = []
+        
+        for item in items:
+            product_id = item.get('product')
+            quantity = item.get('quantity', 0)
+            
+            try:
+                product = Product.objects.get(id=product_id)
+                if product.quantity < quantity:
+                    errors.append(f"{product.product_name}: Only {product.quantity} available")
+            except Product.DoesNotExist:
+                errors.append(f"Product {product_id} not found")
+        
+        if errors:
+            return Response({'errors': errors}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'status': 'ok'})
