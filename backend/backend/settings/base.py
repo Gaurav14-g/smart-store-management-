@@ -44,6 +44,8 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'backend.urls'
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 STATIC_URL = os.getenv("STATIC_URL",'static/')
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
 

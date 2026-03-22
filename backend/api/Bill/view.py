@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Sum, Count
+from django.http import FileResponse
 from datetime import datetime
 from .model import Bill
 from .serializer import BillSerializer, BillListSerializer
@@ -46,6 +47,14 @@ class BillViewset(viewsets.ModelViewSet):
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
     
+    @action(detail=True, methods=['get'], url_path='receipt')
+    def receipt(self, request, pk=None):
+        bill = self.get_object()
+        if not bill.receipt_pdf:
+            return Response({'error': 'Receipt not found'}, status=status.HTTP_404_NOT_FOUND)
+        return FileResponse(bill.receipt_pdf.open('rb'), content_type='application/pdf',
+                            as_attachment=True, filename=f'receipt_{str(bill.id)[:8]}.pdf')
+
     @action(detail=False, methods=['get'], url_path='sales-report')
     def sales_report(self, request):
         start_date = request.query_params.get('start_date')
@@ -56,14 +65,14 @@ class BillViewset(viewsets.ModelViewSet):
         if start_date:
             try:
                 start_date = datetime.strptime(start_date, '%Y-%m-%d')
-                queryset = queryset.filter(bill_date__gte=start_date)
+                queryset = queryset.filter(bill_date__date__gte=start_date.date())
             except ValueError:
                 return Response({'error': 'Invalid start_date format. Use YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
         
         if end_date:
             try:
                 end_date = datetime.strptime(end_date, '%Y-%m-%d')
-                queryset = queryset.filter(bill_date__lte=end_date)
+                queryset = queryset.filter(bill_date__date__lte=end_date.date())
             except ValueError:
                 return Response({'error': 'Invalid end_date format. Use YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
         

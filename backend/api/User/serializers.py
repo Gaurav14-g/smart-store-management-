@@ -1,22 +1,38 @@
 from rest_framework import serializers
-from django.contrib.auth.models import User, Group
+from django.contrib.auth.models import User, Group, Permission
 from django.contrib.auth.hashers import make_password
 from api.UserProfile.model import UserProfile
 
 
+class GroupDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Group
+        fields = ['id', 'name']
+
+
+class PermissionDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Permission
+        fields = ['id', 'name', 'codename']
+
+
 class UserSerializer(serializers.ModelSerializer):
-    groups = serializers.PrimaryKeyRelatedField(
-        many=True,
-        queryset=Group.objects.all()
-    )
+    groups = serializers.PrimaryKeyRelatedField(many=True, queryset=Group.objects.all())
+    groups_detail = GroupDetailSerializer(source='groups', many=True, read_only=True)
+    user_permissions_detail = serializers.SerializerMethodField()
     contact_no = serializers.IntegerField(required=False)
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'password', 'email', 'first_name', 'last_name', 'groups', 'is_staff','is_active', 'contact_no']
-        #fields ='__all__'
-        extra_kwargs = {
-            'password': {'write_only': True}
-        }
+        fields = ['id', 'username', 'password', 'email', 'first_name', 'last_name',
+                  'groups', 'groups_detail', 'user_permissions_detail',
+                  'is_staff', 'is_active', 'contact_no']
+        extra_kwargs = {'password': {'write_only': True}}
+
+    def get_user_permissions_detail(self, instance):
+        # Return all permissions from the user's groups
+        perms = Permission.objects.filter(group__user=instance).distinct()
+        return PermissionDetailSerializer(perms, many=True).data
 
     def to_representation(self, instance):
         # Get the original serialized data
@@ -52,21 +68,18 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
     def update(self, instance, validated_data):
-        groups_data = validated_data.pop('groups', [])
+        groups_data = validated_data.pop('groups', None)  # None = not provided
         contact_no = validated_data.pop('contact_no', None)
 
-        # Hash the password before saving the user
         if 'password' in validated_data:
             validated_data['password'] = make_password(validated_data['password'])
 
-        # Update the user instance
         instance = super(UserSerializer, self).update(instance, validated_data)
-        
-        # Update the groups for the user
-        instance.groups.set(groups_data)
-        self._update_user_permissions(instance)
 
-        # Update or create UserProfile linked to the user
+        if groups_data is not None:  # Only update groups if explicitly sent
+            instance.groups.set(groups_data)
+            self._update_user_permissions(instance)
+
         if contact_no is not None:
             UserProfile.objects.update_or_create(user=instance, defaults={'contact_no': contact_no})
 

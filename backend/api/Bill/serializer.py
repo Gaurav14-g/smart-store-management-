@@ -2,6 +2,8 @@ from rest_framework import serializers
 from .model import Bill, BillItem
 from api.Product.model import Product
 from django.db import transaction
+from django.core.files.base import ContentFile
+from .receipt import generate_receipt_pdf
 
 class BillItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.product_name', read_only=True)
@@ -18,8 +20,8 @@ class BillSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Bill
-        fields = ['id', 'bill_date', 'total_amount', 'user', 'user_name', 'customer', 'customer_name', 'items', 'created_at']
-        read_only_fields = ['id', 'bill_date', 'total_amount', 'user', 'created_at']
+        fields = ['id', 'bill_date', 'total_amount', 'user', 'user_name', 'customer', 'customer_name', 'items', 'receipt_pdf', 'created_at']
+        read_only_fields = ['id', 'bill_date', 'total_amount', 'user', 'receipt_pdf', 'created_at']
     
     @transaction.atomic
     def create(self, validated_data):
@@ -65,7 +67,10 @@ class BillSerializer(serializers.ModelSerializer):
             )
             item['product'].quantity -= item['quantity']
             item['product'].save()
-        
+
+        pdf_buffer = generate_receipt_pdf(bill)
+        bill.receipt_pdf.save(f"receipt_{bill.id}.pdf", ContentFile(pdf_buffer.read()), save=True)
+
         return bill
 
 class BillListSerializer(serializers.ModelSerializer):

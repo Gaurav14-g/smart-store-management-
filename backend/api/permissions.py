@@ -5,7 +5,7 @@ import re
 
 class CustomPermission(BasePermission):
     req = None
-    allowed_groups_for_custom_api = {'admin', 'sales', 'creator', 'editor', 'manager', 'leader', 'employee', 'client', 'backoffice', 'support', 'CompanyUser'}
+    allowed_groups_for_custom_api = {'admin', 'sales', 'creator', 'editor', 'manager', 'leader', 'employee', 'client', 'backoffice', 'support', 'CompanyUser', 'Owner', 'Manager', 'Cashier', 'Employee'}
     
     def get_next_segment_after_api_v1(self, request):
         resolved_url = resolve(request.path_info)
