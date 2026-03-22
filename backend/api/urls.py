@@ -14,6 +14,7 @@ from api.ChangeMyPassword.view import ChangeMyPasswordView
 from api.ForgetPassword.view import PasswordResetRequestView
 from api.IsSuperUser.view import CheckUserType
 from api.CreateUser import views as createUserViews
+from api.VoiceCommand.view import voice_command
 
 from rest_framework import routers
 from rest_framework import permissions
@@ -49,8 +50,8 @@ urlpatterns = [
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
     path('changeMyPassword/', ChangeMyPasswordView.as_view(), name='changeMyPassword'),
     path('passwordReset/', PasswordResetRequestView.as_view(), name='passwordResetRequest'),
-    # path('pass-reset/<str:temp_token>/', PasswordResetConfirmView.as_view(), name='pass-reset'),  # put it in security(auth) app's urls
     path('isSuperUser/', CheckUserType.as_view(), name='isSuperUser'),
     path('createUser/', createUserViews.CreateUserAPI.as_view(), name='create-user'),
+    path('voice-command/', voice_command, name='voice-command'),
     path('statistics/', StatisticsView.statistics, name='statistics'),
 ]
