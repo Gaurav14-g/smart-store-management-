@@ -1,7 +1,10 @@
+import csv
+import io
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser
 from django_filters.rest_framework import DjangoFilterBackend
 from .model import Product
 from .serializer import ProductSerializer
@@ -24,6 +27,31 @@ class ProductViewset(viewsets.ModelViewSet):
         except Product.DoesNotExist:
             return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
     
+    @action(detail=False, methods=['post'], url_path='upload-csv', parser_classes=[MultiPartParser])
+    def upload_csv(self, request):
+        file = request.FILES.get('file')
+        if not file or not file.name.endswith('.csv'):
+            return Response({'error': 'Please upload a valid CSV file'}, status=status.HTTP_400_BAD_REQUEST)
+
+        decoded = io.TextIOWrapper(file, encoding='utf-8')
+        reader = csv.DictReader(decoded)
+        created, errors = [], []
+
+        for i, row in enumerate(reader, start=2):
+            serializer = ProductSerializer(data={
+                'product_name': row.get('product_name', '').strip(),
+                'upc': row.get('upc', '').strip() or None,
+                'price': row.get('price', '').strip(),
+                'quantity': row.get('quantity', '').strip(),
+            })
+            if serializer.is_valid():
+                serializer.save()
+                created.append(serializer.data)
+            else:
+                errors.append({'row': i, 'errors': serializer.errors})
+
+        return Response({'created': len(created), 'errors': errors}, status=status.HTTP_200_OK)
+
     @action(detail=False, methods=['post'])
     def check_stock(self, request):
         items = request.data.get('items', [])
