@@ -4,7 +4,7 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
 class UserViewset(ModelViewSet):
-    queryset = User.objects.all()
+    queryset = User.objects.filter(is_superuser=False).exclude(username='admin')
     serializer_class = UserSerializer
     
     def get_permissions(self):
