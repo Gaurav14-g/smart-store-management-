@@ -27,7 +27,10 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'password', 'email', 'first_name', 'last_name',
                   'groups', 'groups_detail', 'user_permissions_detail',
                   'is_staff', 'is_active', 'contact_no']
-        extra_kwargs = {'password': {'write_only': True}}
+        extra_kwargs = {
+            'password': {'write_only': True},
+            'is_active': {'read_only': True},  # prevent client from setting is_active
+        }
 
     def get_user_permissions_detail(self, instance):
         # Return all permissions from the user's groups
@@ -49,13 +52,12 @@ class UserSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         groups_data = validated_data.pop('groups', [])
         contact_no = validated_data.pop('contact_no', None)
+        password = validated_data.pop('password')
 
-        # Hash the password before saving the user
-        if 'password' in validated_data:
-            validated_data['password'] = make_password(validated_data['password'])
-        
-        # Create the user
+        validated_data['is_active'] = True
         user = super(UserSerializer, self).create(validated_data)
+        user.set_password(password)  # correctly hashes password
+        user.save()
         
         # Set the groups for the user
         user.groups.set(groups_data)
@@ -72,9 +74,12 @@ class UserSerializer(serializers.ModelSerializer):
         contact_no = validated_data.pop('contact_no', None)
 
         if 'password' in validated_data:
-            validated_data['password'] = make_password(validated_data['password'])
-
-        instance = super(UserSerializer, self).update(instance, validated_data)
+            password = validated_data.pop('password')
+            instance = super(UserSerializer, self).update(instance, validated_data)
+            instance.set_password(password)
+            instance.save()
+        else:
+            instance = super(UserSerializer, self).update(instance, validated_data)
 
         if groups_data is not None:  # Only update groups if explicitly sent
             instance.groups.set(groups_data)

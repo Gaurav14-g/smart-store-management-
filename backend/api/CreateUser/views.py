@@ -11,6 +11,7 @@ class CreateUserAPI(APIView):
         data = request.data.copy()  # Make a mutable copy of request data
         if 'groups' not in data:
             data['groups'] = []
+        data['is_active'] = True
 
         # Pass the updated data to the serializer
         serializer = UserSerializer(data=data)
